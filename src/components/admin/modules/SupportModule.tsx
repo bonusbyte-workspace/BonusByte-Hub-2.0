@@ -30,7 +30,6 @@ export default function SupportModule({ adminUser: _adminUser }: Props) {
     setTickets(prev => prev.map(t => t.id === id ? { ...t, status } : t));
   };
 
-  const selectedTicket = tickets.find(t => t.id === selected);
 
   return (
     <div className="p-5">

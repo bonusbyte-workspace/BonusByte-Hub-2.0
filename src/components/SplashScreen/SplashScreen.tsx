@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { LoadingPhase, LoadingState } from '@/models/types';
+import type { LoadingState } from '@/models/types';
 
 interface SplashScreenProps {
   onComplete: () => void;
