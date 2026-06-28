@@ -39,7 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .get(),
   ]);
 
-  const toEntry = (snap: FirebaseFirestore.QueryDocumentSnapshot, rank: number, field: 'totalEarned' | 'dailyEarned') => {
+  const toEntry = (snap: FirebaseFirestore.QueryDocumentSnapshot, rank: number, _field: 'totalEarned' | 'dailyEarned') => {
     const d = snap.data();
     return {
       rank,
