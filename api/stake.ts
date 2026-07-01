@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { validateInitData } from './_lib/adminAuth';
-import { db } from './_lib/firebase';
+import { validateInitData } from './_lib/adminAuth.js';
+import { db } from './_lib/firebase.js';
 import { FieldValue } from 'firebase-admin/firestore';
 
 const APY_MAP: Record<number, number> = { 7: 12, 30: 36, 90: 120 };

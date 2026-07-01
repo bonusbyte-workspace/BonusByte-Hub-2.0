@@ -59,7 +59,7 @@ export async function validateAdminToken(
     throw new Error('Missing or invalid Authorization header');
   }
 
-  const { auth } = await import('./firebase');
+  const { auth } = await import('./firebase.js');
   const token    = authHeader.replace('Bearer ', '');
   const decoded  = await auth.verifyIdToken(token);
 

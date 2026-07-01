@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { validateInitData } from './_lib/adminAuth';
-import { db } from './_lib/firebase';
+import { validateInitData } from './_lib/adminAuth.js';
+import { db } from './_lib/firebase.js';
 import { FieldValue } from 'firebase-admin/firestore';
 
 const MAX_CPS    = parseInt(process.env.VITE_MAX_CPS    ?? '20');

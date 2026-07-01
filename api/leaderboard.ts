@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { db } from './_lib/firebase';
+import { db } from './_lib/firebase.js';
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
