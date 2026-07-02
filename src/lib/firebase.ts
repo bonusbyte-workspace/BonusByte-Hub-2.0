@@ -1,35 +1,18 @@
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getFirestore, Firestore } from 'firebase/firestore';
-import { getAuth, Auth } from 'firebase/auth';
-import { getAnalytics, Analytics } from 'firebase/analytics';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId:             import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId:     import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+  apiKey:            "AIzaSyDi_HhkIGVF138k359doneP8Lqsaj_6ohg",
+  authDomain:        "bonusbyte-6a4bb.firebaseapp.com",
+  projectId:         "bonusbyte-6a4bb",
+  storageBucket:     "bonusbyte-6a4bb.firebasestorage.app",
+  messagingSenderId: "1091428714278",
+  appId:             "1:1091428714278:web:c5e3a8508a20e2336b63e7",
+  measurementId:     "G-021R7P16BP",
 };
 
-// Singleton pattern — safe for HMR
-const app: FirebaseApp = getApps().length === 0
-  ? initializeApp(firebaseConfig)
-  : getApp();
-
-export const db: Firestore = getFirestore(app);
-export const auth: Auth = getAuth(app);
-
-// Analytics only in browser (not SSR)
-let analytics: Analytics | null = null;
-if (typeof window !== 'undefined') {
-  try {
-    analytics = getAnalytics(app);
-  } catch {
-    // Analytics may fail in Telegram WebApp context — non-critical
-  }
-}
-export { analytics };
-
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+export const db   = getFirestore(app);
+export const auth = getAuth(app);
 export default app;
