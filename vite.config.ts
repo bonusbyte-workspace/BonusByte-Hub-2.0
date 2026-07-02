@@ -14,12 +14,25 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'motion': ['framer-motion'],
-          'physics': ['matter-js'],
-          'ton': ['@tonconnect/ui-react'],
-          'firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+        // Updated to function-form to comply with Rolldown and Vite 8 requirements
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+              return 'react-vendor';
+            }
+            if (id.includes('framer-motion')) {
+              return 'motion';
+            }
+            if (id.includes('matter-js')) {
+              return 'physics';
+            }
+            if (id.includes('@tonconnect/ui-react')) {
+              return 'ton';
+            }
+            if (id.includes('firebase')) {
+              return 'firebase';
+            }
+          }
         },
       },
     },
