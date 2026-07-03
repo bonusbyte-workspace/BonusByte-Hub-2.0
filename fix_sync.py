@@ -1,4 +1,23 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+# -*- coding: utf-8 -*-
+import os, sys, subprocess
+
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8")
+
+def w(path, txt):
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(txt)
+    print("WROTE " + path)
+
+def run(cmd):
+    r = subprocess.run(cmd, shell=True, capture_output=True, text=True, encoding="utf-8")
+    if r.stdout.strip(): print(r.stdout.strip())
+    if r.stderr.strip(): print(r.stderr.strip())
+    return r.returncode
+
+# ── useTapEngine.ts: write directly to Firestore (no server API needed)
+w("src/hooks/useTapEngine.ts", """import { useState, useRef, useCallback, useEffect } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { haptic } from '@/lib/telegram';
@@ -132,3 +151,14 @@ export function useTapEngine({
 
   return { balance, energy, isSyncing, tapCount, handleTap };
 }
+""")
+
+# ── Push
+print("\nPushing...")
+run("git add -A")
+run('git commit -m "fix: write balance directly to Firestore, remove broken API sync"')
+code = run("git push origin main")
+if code == 0:
+    print("\nDone! Vercel deploys in ~60 seconds. Taps will save to Firestore instantly.")
+else:
+    print("\nPush failed — run: git push origin main")
