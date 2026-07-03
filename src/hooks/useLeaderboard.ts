@@ -1,14 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
+import {
+  collection, query, orderBy, limit, getDocs,
+} from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import type { LeaderboardEntry, LeaderboardFilter } from '@/models/types';
 
 interface UseLeaderboardReturn {
-  entries:    LeaderboardEntry[];
-  isLoading:  boolean;
-  error:      string | null;
-  filter:     LeaderboardFilter;
-  setFilter:  (f: LeaderboardFilter) => void;
-  updatedAt:  number | null;
-  refetch:    () => void;
+  entries:   LeaderboardEntry[];
+  isLoading: boolean;
+  error:     string | null;
+  filter:    LeaderboardFilter;
+  setFilter: (f: LeaderboardFilter) => void;
+  updatedAt: number | null;
+  refetch:   () => void;
 }
 
 export function useLeaderboard(): UseLeaderboardReturn {
@@ -26,15 +30,34 @@ export function useLeaderboard(): UseLeaderboardReturn {
     setIsLoading(true);
     setError(null);
 
-    fetch(`/api/leaderboard?filter=${filter}`)
-      .then(r => r.json())
-      .then(data => {
+    const field = filter === 'daily' ? 'dailyEarned' : 'totalEarned';
+
+    const q = query(
+      collection(db, 'users'),
+      orderBy(field, 'desc'),
+      limit(100)
+    );
+
+    getDocs(q)
+      .then(snap => {
         if (cancelled) return;
-        setEntries(data.players ?? []);
-        setUpdatedAt(data.updatedAt ?? null);
+        const list: LeaderboardEntry[] = snap.docs.map((doc, i) => {
+          const d = doc.data();
+          return {
+            rank:        i + 1,
+            telegramId:  doc.id,
+            username:    d.username    ?? '',
+            firstName:   d.firstName   ?? 'Player',
+            photoUrl:    d.photoUrl,
+            totalEarned: d.totalEarned ?? 0,
+            dailyEarned: d.dailyEarned ?? 0,
+          };
+        });
+        setEntries(list);
+        setUpdatedAt(Date.now());
       })
-      .catch(() => {
-        if (!cancelled) setError('Failed to load leaderboard.');
+      .catch(err => {
+        if (!cancelled) setError('Could not load leaderboard: ' + err.message);
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
