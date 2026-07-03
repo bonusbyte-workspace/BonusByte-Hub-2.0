@@ -25,11 +25,9 @@ function makeGuest(u: TelegramUser): UserProfile {
   };
 }
 
-/** Remove undefined fields — Firestore rejects them */
-function clean<T extends object>(obj: T): Partial<T> {
-  return Object.fromEntries(
-    Object.entries(obj).filter(([, v]) => v !== undefined)
-  ) as Partial<T>;
+// Firestore does NOT accept undefined — strip all undefined fields
+function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
 }
 
 export function useTelegramUser(): UseTelegramUserReturn {
@@ -49,17 +47,17 @@ export function useTelegramUser(): UseTelegramUserReturn {
       if (snap.exists()) {
         setUserProfile(snap.data() as UserProfile);
       } else {
-        const initData  = getInitData();
-        const sp        = initData.split('&').find(p => p.startsWith('start_param='));
-        const refId     = sp ? sp.replace('start_param=', '') : undefined;
+        const initData = getInitData();
+        const sp       = initData.split('&').find(p => p.startsWith('start_param='));
+        const refId    = sp ? sp.replace('start_param=', '') : undefined;
 
-        const profile: UserProfile = {
+        const raw = {
           telegramId:       uid,
           username:         u.username   ?? '',
           firstName:        u.first_name ?? 'Player',
-          ...(u.last_name  ? { lastName:  u.last_name  } : {}),
-          ...(u.photo_url  ? { photoUrl:  u.photo_url  } : {}),
-          ...(refId        ? { referrerId: refId        } : {}),
+          lastName:         u.last_name,
+          photoUrl:         u.photo_url,
+          referrerId:       refId,
           balance:          0,
           totalEarned:      0,
           energyAtLastSync: 1000,
@@ -70,18 +68,19 @@ export function useTelegramUser(): UseTelegramUserReturn {
           dailyResetAt:     now,
           tapLevel:         1,
           energyLevel:      1,
+          serverTimestamp:  serverTimestamp(),
         };
 
-        // clean() strips any remaining undefined before writing
-        await setDoc(ref, { ...clean(profile), serverTimestamp: serverTimestamp() });
-        setUserProfile(profile);
+        const safe = stripUndefined(raw as Record<string, unknown>);
+        await setDoc(ref, safe);
+        setUserProfile(safe as unknown as UserProfile);
       }
       setIsGuestMode(false);
       setGuestReason(null);
     } catch (err: unknown) {
       const code   = (err as { code?: string }).code ?? 'unknown';
       const msg    = err instanceof Error ? err.message : String(err);
-      const reason = code + ': ' + msg.slice(0, 80);
+      const reason = code + ': ' + msg.slice(0, 120);
       console.error('[BB] Firestore:', reason);
       setUserProfile(makeGuest(u));
       setIsGuestMode(true);
