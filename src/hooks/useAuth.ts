@@ -21,31 +21,37 @@ interface UseAuthReturn {
 export function useAuth(): UseAuthReturn {
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error,     setError]     = useState<string | null>(null);
+  const [error,      setError]     = useState<string | null>(null);
 
-  const resolveAdmin = useCallback(async (user: User) => {
+  const resolveAdmin = useCallback(async (user: User): Promise<string | null> => {
     try {
-      // Check admins collection
       const snap = await getDoc(doc(db, 'admins', user.uid));
-      if (snap.exists()) {
-        const role = snap.data().role as UserRole;
-        if (ADMIN_ROLES.includes(role)) {
-          setAdminUser({ uid: user.uid, email: user.email ?? '', role });
-          return;
-        }
+      if (!snap.exists()) {
+        return 'No admin record found. Create Firestore document: admins/' + user.uid + ' with role: developer';
       }
-      // Auto-create developer role for first admin (if admins collection is empty)
-      // This only runs once — remove after first login
-      setAdminUser(null);
-    } catch {
-      setAdminUser(null);
+      const role = snap.data().role as UserRole;
+      if (!ADMIN_ROLES.includes(role)) {
+        return 'Invalid role "' + role + '". Must be: developer, support, or economy';
+      }
+      setAdminUser({ uid: user.uid, email: user.email ?? '', role });
+      return null;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('permission') || msg.includes('Missing')) {
+        return 'Firestore rules block admins read. Update rules to allow: match /admins/{uid} { allow read: if request.auth != null; }';
+      }
+      return 'Admin lookup failed: ' + msg.slice(0, 100);
     }
   }, []);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
-      if (user) await resolveAdmin(user);
-      else setAdminUser(null);
+      if (user) {
+        const err = await resolveAdmin(user);
+        if (err) { setError(err); setAdminUser(null); }
+      } else {
+        setAdminUser(null);
+      }
       setIsLoading(false);
     });
     return unsub;
@@ -55,13 +61,22 @@ export function useAuth(): UseAuthReturn {
     setError(null);
     setIsLoading(true);
     try {
-      const cred = await signInWithEmailAndPassword(auth, email, password);
-      await resolveAdmin(cred.user);
+      const cred  = await signInWithEmailAndPassword(auth, email, password);
+      const err   = await resolveAdmin(cred.user);
+      if (err) {
+        setError(err);
+        setIsLoading(false);
+        return false;
+      }
       setIsLoading(false);
       return true;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      setError(msg.replace('Firebase: ', '').replace(/ \(auth\/.*\)\.?/, ''));
+      const clean = msg
+        .replace('Firebase: ', '')
+        .replace(/\(auth\/.*\)\.?/, '')
+        .trim();
+      setError(clean || 'Login failed. Check email and password.');
       setIsLoading(false);
       return false;
     }
@@ -70,6 +85,7 @@ export function useAuth(): UseAuthReturn {
   const logout = useCallback(async () => {
     await signOut(auth);
     setAdminUser(null);
+    setError(null);
   }, []);
 
   return { adminUser, isLoading, error, login, logout, isAuthorized: adminUser !== null };
