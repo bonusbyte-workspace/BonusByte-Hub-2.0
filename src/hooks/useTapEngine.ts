@@ -57,7 +57,7 @@ export function useTapEngine({
     if (pendingTaps.current === 0 || !telegramId || telegramId === 'guest') return;
 
     const now        = Date.now();
-    const earned     = pendingTaps.current * config.coinsPerTap;
+    
     pendingTaps.current = 0;
     lastSyncAt.current  = now;
 
