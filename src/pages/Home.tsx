@@ -13,15 +13,15 @@ const SPIN = '@keyframes bb-spin{to{transform:rotate(360deg)}}';
 
 export default function Home() {
   const { userProfile, isLoading, error, isGuestMode, guestReason, refetch } = useTelegramUser();
-  const [particles,   setParticles]   = useState<Particle[]>([]);
-  const [showReason,  setShowReason]  = useState(false);
+  const [particles, setParticles] = useState<Particle[]>([]);
+  const [showReason, setShowReason] = useState(false);
 
   const onSpawn = useCallback((p: Particle) => setParticles(prev => [...prev.slice(-30), p]), []);
   const onEnd   = useCallback((id: string) => setParticles(prev => prev.filter(p => p.id !== id)), []);
 
   const { balance, energy, tapCount, handleTap, isSyncing } = useTapEngine({
     telegramId:      userProfile?.telegramId ?? 'guest',
-    initialBalance:  userProfile?.balance    ?? 0,
+    initialBalance:  userProfile?.balance ?? 0,
     initialEnergy:   userProfile?.energyAtLastSync ?? DEFAULT_CONFIG.maxEnergy,
     config:          DEFAULT_CONFIG,
     onParticleSpawn: onSpawn,
@@ -50,32 +50,28 @@ export default function Home() {
       <style>{SPIN}</style>
       <PhysicsCanvas particles={particles} onParticleEnd={onEnd}/>
 
-      {/* Guest mode banner */}
       {isGuestMode && (
         <div onClick={() => setShowReason(r => !r)}
           style={{background:'rgba(255,152,0,0.12)',borderBottom:'1px solid rgba(255,152,0,0.3)',
-            padding:'5px 16px',textAlign:'center',zIndex:20,cursor:'pointer',
-            position:'relative'}}>
+            padding:'5px 16px',textAlign:'center',zIndex:20,cursor:'pointer',position:'relative'}}>
           <p style={{color:'#FFA726',fontSize:10,margin:0,fontWeight:700}}>
-            OFFLINE  {showReason ? '(hide)' : '(tap for error)'}
+            OFFLINE {showReason ? '(hide)' : '(tap for error)'}
           </p>
-          {showReason && (
-            <>
-              <p style={{color:'#FF7043',fontSize:9,margin:'3px 0 0',
-                wordBreak:'break-all',lineHeight:1.4}}>{guestReason}</p>
-              <button onClick={e=>{e.stopPropagation();refetch();}}
-                style={{marginTop:4,background:'rgba(255,152,0,0.2)',border:'1px solid #FFA726',
-                  color:'#FFA726',borderRadius:4,padding:'2px 12px',fontSize:9,cursor:'pointer'}}>
-                Retry
-              </button>
-            </>
-          )}
+          {showReason && (<>
+            <p style={{color:'#FF7043',fontSize:9,margin:'3px 0 0',wordBreak:'break-all',lineHeight:1.4}}>{guestReason}</p>
+            <button onClick={e=>{e.stopPropagation();refetch();}}
+              style={{marginTop:4,background:'rgba(255,152,0,0.2)',border:'1px solid #FFA726',
+                color:'#FFA726',borderRadius:4,padding:'2px 12px',fontSize:9,cursor:'pointer'}}>
+              Retry
+            </button>
+          </>)}
         </div>
       )}
 
-      {/* ── Top bar: pushed down with padding-top ── */}
+      {/* Top bar — padded down past Telegram header */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
-        padding:'28px 20px 8px',position:'relative',zIndex:10}}>
+        paddingTop:'max(48px, calc(env(safe-area-inset-top, 0px) + 48px))',
+        paddingLeft:20,paddingRight:20,paddingBottom:8,position:'relative',zIndex:10}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <img src="/logo.png" alt="" style={{width:28,height:28,objectFit:'contain'}}/>
           <div>
@@ -89,20 +85,16 @@ export default function Home() {
         </div>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           {isSyncing && !isGuestMode && (
-            <div style={{width:14,height:14,border:'1.5px solid #4FC3F7',
-              borderTopColor:'transparent',borderRadius:'50%',
-              animation:'bb-spin 0.8s linear infinite'}}/>
+            <div style={{width:14,height:14,border:'1.5px solid #4FC3F7',borderTopColor:'transparent',
+              borderRadius:'50%',animation:'bb-spin 0.8s linear infinite'}}/>
           )}
           <TonConnectButton/>
         </div>
       </div>
 
-      {/* Balance */}
       <div style={{textAlign:'center',padding:'4px 20px 12px',position:'relative',zIndex:10}}>
-        <p style={{color:'#5A6A79',fontSize:11,textTransform:'uppercase',
-          letterSpacing:'0.1em',margin:'0 0 4px'}}>Balance</p>
-        <h1 style={{fontSize:'clamp(2rem,8vw,3rem)',fontWeight:900,letterSpacing:'-0.02em',
-          lineHeight:1,margin:'0 0 4px',
+        <p style={{color:'#5A6A79',fontSize:11,textTransform:'uppercase',letterSpacing:'0.1em',margin:'0 0 4px'}}>Balance</p>
+        <h1 style={{fontSize:'clamp(2rem,8vw,3rem)',fontWeight:900,letterSpacing:'-0.02em',lineHeight:1,margin:'0 0 4px',
           background:'linear-gradient(135deg,#8C8C8C 0%,#E8E8E8 25%,#C0C0C0 50%,#F5F5F5 75%,#9A9A9A 100%)',
           WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>
           {balance.toLocaleString()}
@@ -110,13 +102,11 @@ export default function Home() {
         <p style={{color:'#5A6A79',fontSize:14,fontWeight:600,margin:0}}>BB Coins</p>
       </div>
 
-      {/* Coin */}
       <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',
         perspective:'1000px',position:'relative',zIndex:10}}>
         <TapCoin onTap={handleTap} energyRatio={energy/DEFAULT_CONFIG.maxEnergy} tapCount={tapCount}/>
       </div>
 
-      {/* Energy */}
       <div style={{position:'relative',zIndex:10}}>
         <EnergyBar energy={energy} maxEnergy={DEFAULT_CONFIG.maxEnergy}/>
       </div>

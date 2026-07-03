@@ -1,114 +1,81 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { collection, onSnapshot, query, orderBy, limit, doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import type { AdminUser } from '@/models/types';
 
 interface Props { adminUser: AdminUser; }
 
-const MOCK_TICKETS = [
-  { id: 't1', user: '@alice99',   message: 'My balance is not updating after tapping', status: 'open',        time: '2h ago' },
-  { id: 't2', user: '@bob_taps',  message: 'Staking page shows wrong APY calculation', status: 'in-progress', time: '4h ago' },
-  { id: 't3', user: '@crypto_x',  message: 'TON wallet keeps disconnecting',            status: 'open',        time: '6h ago' },
-  { id: 't4', user: '@miner22',   message: 'Cannot see my referral rewards',            status: 'resolved',    time: '1d ago' },
-];
-
-const STATUS_COLORS: Record<string, string> = {
-  open:         '#4FC3F7',
-  'in-progress':'#FFE082',
-  resolved:     '#A5D6A7',
-};
+interface UserRow {
+  id: string; firstName: string; username: string;
+  balance: number; totalEarned: number; lastSyncAt: number; role: string;
+}
 
 export default function SupportModule({ adminUser: _adminUser }: Props) {
-  const [search,    setSearch]    = useState('');
-  const [tickets,   setTickets]   = useState(MOCK_TICKETS);
-  const [selected,  setSelected]  = useState<string | null>(null);
-  const [adminNote, setAdminNote] = useState('');
+  const [users,  setUsers]  = useState<UserRow[]>([]);
+  const [search, setSearch] = useState('');
 
-  const filtered = tickets.filter(t =>
-    t.user.includes(search) || t.message.toLowerCase().includes(search.toLowerCase())
+  useEffect(() => {
+    const q = query(collection(db, 'users'), orderBy('totalEarned', 'desc'), limit(50));
+    const unsub = onSnapshot(q, snap => {
+      setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() } as UserRow)));
+    });
+    return unsub;
+  }, []);
+
+  const filtered = users.filter(u =>
+    u.username?.includes(search) ||
+    u.firstName?.toLowerCase().includes(search.toLowerCase()) ||
+    u.id.includes(search)
   );
 
-  const updateStatus = (id: string, status: string) => {
-    setTickets(prev => prev.map(t => t.id === id ? { ...t, status } : t));
-  };
-
-
   return (
-    <div className="p-5">
-      <h3 className="chrome-text text-sm font-black uppercase tracking-widest mb-4">
-        Support Tickets
-      </h3>
-
-      {/* Search */}
-      <input
-        type="search"
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        placeholder="Search users or messages..."
-        className="w-full bg-obsidian-900 border border-obsidian-600 rounded-xl px-4 py-2.5 text-chrome-200 text-sm outline-none focus:border-chrome-500 mb-4"
-        style={{ touchAction: 'auto', userSelect: 'auto' }}
-      />
-
-      {/* Ticket list */}
-      <div className="space-y-2 mb-4">
-        {filtered.map(ticket => (
-          <div
-            key={ticket.id}
-            onClick={() => setSelected(selected === ticket.id ? null : ticket.id)}
-            className="admin-metric-card cursor-pointer transition-all"
-            style={{
-              borderColor: selected === ticket.id ? 'rgba(79,195,247,0.4)' : undefined,
-            }}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="text-chrome-200 text-sm font-semibold">{ticket.user}</p>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                    style={{ color: STATUS_COLORS[ticket.status], background: `${STATUS_COLORS[ticket.status]}15` }}>
-                    {ticket.status}
-                  </span>
-                </div>
-                <p className="text-steel-400 text-xs truncate">{ticket.message}</p>
-              </div>
-              <span className="text-steel-400 text-[10px] flex-shrink-0">{ticket.time}</span>
-            </div>
-
-            {/* Expanded actions */}
-            {selected === ticket.id && (
-              <div className="mt-3 pt-3 border-t border-obsidian-700 space-y-2">
-                <p className="text-chrome-300 text-xs">{ticket.message}</p>
-                <textarea
-                  value={adminNote}
-                  onChange={e => setAdminNote(e.target.value)}
-                  placeholder="Admin note..."
-                  rows={2}
-                  className="w-full bg-obsidian-900 border border-obsidian-600 rounded-lg px-3 py-2 text-chrome-200 text-xs outline-none resize-none"
-                  style={{ touchAction: 'auto', userSelect: 'auto' }}
-                />
-                <div className="flex gap-2">
-                  {['in-progress', 'resolved'].map(s => (
-                    <button
-                      key={s}
-                      onClick={e => { e.stopPropagation(); updateStatus(ticket.id, s); }}
-                      className="flex-1 py-1.5 rounded-lg text-[10px] font-bold capitalize border transition-colors"
-                      style={{
-                        color:       STATUS_COLORS[s],
-                        borderColor: `${STATUS_COLORS[s]}40`,
-                        background:  `${STATUS_COLORS[s]}10`,
-                      }}
-                    >
-                      Mark {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+    <div style={{padding:16}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:16}}>
+        {[
+          { label:'Total Users', value: users.length },
+          { label:'With Balance', value: users.filter(u => u.balance > 0).length },
+          { label:'Active Today', value: users.filter(u => u.lastSyncAt > Date.now()-86400000).length },
+        ].map(s => (
+          <div key={s.label} style={{background:'linear-gradient(145deg,#141416,#0F0F11)',
+            border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:'10px 12px'}}>
+            <p style={{color:'#5A6A79',fontSize:9,textTransform:'uppercase',margin:'0 0 2px'}}>{s.label}</p>
+            <p style={{color:'#4FC3F7',fontSize:18,fontWeight:900,margin:0}}>{s.value}</p>
           </div>
         ))}
       </div>
 
-      {filtered.length === 0 && (
-        <p className="text-steel-400 text-sm text-center py-8">No tickets found</p>
-      )}
+      <input value={search} onChange={e => setSearch(e.target.value)}
+        placeholder="Search by name, username, or ID..."
+        style={{width:'100%',background:'#0A0A0D',border:'1px solid #2A2A2D',
+          borderRadius:10,padding:'10px 14px',color:'#E8E8E8',fontSize:12,
+          outline:'none',boxSizing:'border-box',marginBottom:12,
+          WebkitUserSelect:'auto',touchAction:'auto'}}/>
+
+      <div style={{display:'flex',flexDirection:'column',gap:6}}>
+        {filtered.map(user => (
+          <div key={user.id} style={{background:'linear-gradient(145deg,#141416,#0F0F11)',
+            border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:'10px 14px',
+            display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <div>
+              <p style={{color:'#D0D0D0',fontSize:12,fontWeight:700,margin:'0 0 2px'}}>
+                {user.firstName} {user.username ? '@'+user.username : ''}
+              </p>
+              <p style={{color:'#5A6A79',fontSize:10,margin:0}}>
+                ID: {user.id} · Last active: {new Date(user.lastSyncAt ?? 0).toLocaleDateString()}
+              </p>
+            </div>
+            <div style={{textAlign:'right',flexShrink:0}}>
+              <p style={{color:'#D4AF37',fontSize:12,fontWeight:700,margin:'0 0 2px'}}>
+                {(user.balance ?? 0).toLocaleString()} BB
+              </p>
+              <p style={{color:'#5A6A79',fontSize:9,margin:0}}>{user.role}</p>
+            </div>
+          </div>
+        ))}
+        {filtered.length === 0 && (
+          <p style={{color:'#3A3A45',fontSize:12,textAlign:'center',padding:'20px 0'}}>No users found</p>
+        )}
+      </div>
     </div>
   );
 }

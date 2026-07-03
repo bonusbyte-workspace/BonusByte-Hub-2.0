@@ -1,123 +1,76 @@
 import { useState, useEffect } from 'react';
-import type { DevMetrics } from '@/models/types';
+import {
+  collection, onSnapshot, query, orderBy, limit, getDocs,
+} from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
-function MetricCard({ label, value, unit, accent }: { label: string; value: string | number; unit?: string; accent?: string }) {
-  return (
-    <div className="admin-metric-card">
-      <p className="text-steel-400 text-[10px] uppercase tracking-widest mb-1">{label}</p>
-      <p className="font-black text-xl leading-none" style={{ color: accent ?? '#E8E8E8' }}>
-        {typeof value === 'number' ? value.toLocaleString() : value}
-        {unit && <span className="text-xs font-normal text-steel-400 ml-1">{unit}</span>}
-      </p>
-    </div>
-  );
-}
-
-function ConfigToggle({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
-  return (
-    <div className="flex items-center justify-between py-3 border-b border-obsidian-700">
-      <span className="text-chrome-300 text-sm">{label}</span>
-      <input
-        type="number"
-        value={value}
-        onChange={e => onChange(Number(e.target.value))}
-        className="w-24 bg-obsidian-900 border border-obsidian-600 rounded-lg px-3 py-1.5 text-chrome-200 text-sm text-right outline-none focus:border-chrome-500"
-        style={{ touchAction: 'auto', userSelect: 'auto' }}
-      />
-    </div>
-  );
-}
-
-const MOCK_METRICS: DevMetrics = {
-  apiLatencyMs:          38,
-  firestoreReadsToday:   14230,
-  firestoreWritesToday:  3410,
-  antiCheatBlocksToday:  12,
-  activeUsers:           187,
-  syncCallsPerMinute:    94,
-};
+interface Log { id: string; telegramId: string; reason: string; clicksReported: number; maxAllowed: number; timestamp: number; }
 
 export default function DeveloperModule() {
-  const [metrics, setMetrics]   = useState<DevMetrics>(MOCK_METRICS);
-  const [maxCPS,  setMaxCPS]    = useState(20);
-  const [regenRate, setRegenRate] = useState(3);
-  const [maxEnergy, setMaxEnergy] = useState(1000);
-  const [saved, setSaved]       = useState(false);
+  const [userCount,   setUserCount]   = useState(0);
+  const [logs,        setLogs]        = useState<Log[]>([]);
+  const [activeUsers, setActiveUsers] = useState(0);
 
   useEffect(() => {
-    // In production: fetch /api/admin/metrics with auth token
-    const interval = setInterval(() => {
-      setMetrics(prev => ({
-        ...prev,
-        apiLatencyMs:       20 + Math.floor(Math.random() * 50),
-        syncCallsPerMinute: 80 + Math.floor(Math.random() * 40),
-        activeUsers:        prev.activeUsers + Math.floor(Math.random() * 3 - 1),
-      }));
-    }, 3000);
-    return () => clearInterval(interval);
+    // Total users
+    getDocs(collection(db, 'users')).then(snap => {
+      setUserCount(snap.size);
+      const since = Date.now() - 86400000;
+      setActiveUsers(snap.docs.filter(d => (d.data().lastSyncAt ?? 0) > since).length);
+    });
+    // Anti-cheat logs live
+    const q = query(collection(db, 'antiCheatLogs'), orderBy('timestamp', 'desc'), limit(20));
+    const unsub = onSnapshot(q, snap => {
+      setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() } as Log)));
+    });
+    return unsub;
   }, []);
 
-  const saveConfig = async () => {
-    // In production: POST /api/admin/config
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
+  const metrics = [
+    { label:'Total Users',    value: userCount,    color:'#4FC3F7' },
+    { label:'Active (24h)',   value: activeUsers,  color:'#A5D6A7' },
+    { label:'Cheat Blocks',   value: logs.length,  color:'#EF9A9A' },
+  ];
 
   return (
-    <div className="p-5 space-y-6">
-      <div>
-        <h3 className="chrome-text text-sm font-black uppercase tracking-widest mb-3">
-          Live API Metrics
-        </h3>
-        <div className="grid grid-cols-2 gap-2">
-          <MetricCard label="API Latency"       value={metrics.apiLatencyMs}          unit="ms"   accent="#4FC3F7" />
-          <MetricCard label="Active Users"      value={metrics.activeUsers}                        accent="#A5D6A7" />
-          <MetricCard label="Reads Today"       value={metrics.firestoreReadsToday}                />
-          <MetricCard label="Writes Today"      value={metrics.firestoreWritesToday}               />
-          <MetricCard label="Anti-Cheat Blocks" value={metrics.antiCheatBlocksToday}               accent="#EF9A9A" />
-          <MetricCard label="Syncs / min"       value={metrics.syncCallsPerMinute}                 accent="#FFE082" />
-        </div>
+    <div style={{padding:16}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:20}}>
+        {metrics.map(m => (
+          <div key={m.label} style={{background:'linear-gradient(145deg,#141416,#0F0F11)',
+            border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:'10px 12px'}}>
+            <p style={{color:'#5A6A79',fontSize:9,textTransform:'uppercase',letterSpacing:'0.06em',margin:'0 0 4px'}}>{m.label}</p>
+            <p style={{color:m.color,fontSize:20,fontWeight:900,margin:0}}>{m.value.toLocaleString()}</p>
+          </div>
+        ))}
       </div>
 
-      <div>
-        <h3 className="chrome-text text-sm font-black uppercase tracking-widest mb-3">
-          Game Config
-        </h3>
-        <div className="chrome-surface rounded-xl px-4">
-          <ConfigToggle label="Max CPS (anti-cheat ceiling)" value={maxCPS}      onChange={setMaxCPS}    />
-          <ConfigToggle label="Energy regen rate (per sec)"  value={regenRate}   onChange={setRegenRate}  />
-          <ConfigToggle label="Max energy capacity"          value={maxEnergy}   onChange={setMaxEnergy}  />
-        </div>
-        <button
-          onClick={saveConfig}
-          className="mt-3 chrome-button w-full py-2.5 rounded-xl font-bold text-obsidian-900 text-sm"
-        >
-          {saved ? '✓ Saved' : 'Save Config'}
-        </button>
-      </div>
+      <p style={{color:'#5A6A79',fontSize:11,fontWeight:700,textTransform:'uppercase',
+        letterSpacing:'0.08em',margin:'0 0 10px'}}>Anti-Cheat Log (live)</p>
 
-      <div>
-        <h3 className="chrome-text text-sm font-black uppercase tracking-widest mb-3">
-          Anti-Cheat Log
-        </h3>
-        <div className="chrome-surface rounded-xl overflow-hidden">
-          {[
-            { user: '@player123', reason: 'CPS exceeded',   clicks: 420, max: 60 },
-            { user: '@grinder99', reason: 'Hash mismatch',  clicks: 800, max: 60 },
-            { user: '@tapper007', reason: 'CPS exceeded',   clicks: 350, max: 60 },
-          ].map((log, i) => (
-            <div key={i} className="flex items-center justify-between px-4 py-3 border-b border-obsidian-700 last:border-0">
-              <div>
-                <p className="text-chrome-300 text-xs font-semibold">{log.user}</p>
-                <p className="text-steel-400 text-[10px]">{log.reason}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-red-400 text-xs font-bold">{log.clicks} clicks</p>
-                <p className="text-steel-400 text-[10px]">max {log.max}</p>
-              </div>
+      <div style={{background:'linear-gradient(145deg,#141416,#0F0F11)',
+        border:'1px solid rgba(255,255,255,0.06)',borderRadius:12,overflow:'hidden'}}>
+        {logs.length === 0 && (
+          <p style={{color:'#3A3A45',fontSize:12,textAlign:'center',padding:'20px 0'}}>No violations</p>
+        )}
+        {logs.slice(0, 10).map(log => (
+          <div key={log.id} style={{display:'flex',justifyContent:'space-between',
+            padding:'10px 14px',borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
+            <div>
+              <p style={{color:'#C0C0C0',fontSize:11,fontWeight:600,margin:'0 0 2px'}}>
+                {log.telegramId}
+              </p>
+              <p style={{color:'#5A6A79',fontSize:10,margin:0}}>{log.reason}</p>
             </div>
-          ))}
-        </div>
+            <div style={{textAlign:'right'}}>
+              <p style={{color:'#EF5350',fontSize:11,fontWeight:700,margin:'0 0 2px'}}>
+                {log.clicksReported} clicks
+              </p>
+              <p style={{color:'#5A6A79',fontSize:9,margin:0}}>
+                {new Date(log.timestamp).toLocaleTimeString()}
+              </p>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -1,100 +1,204 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import {
+  collection, onSnapshot, query, orderBy, getDocs,
+  doc, setDoc, addDoc, updateDoc, serverTimestamp,
+} from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
-const INITIAL_POOLS = {
-  days7:  { apy: 12,  totalStaked: 84_200,    activeStakers: 312 },
-  days30: { apy: 36,  totalStaked: 241_500,   activeStakers: 718 },
-  days90: { apy: 120, totalStaked: 1_120_000, activeStakers: 291 },
-};
+interface Task {
+  id:          string;
+  title:       string;
+  description: string;
+  reward:      number;
+  status:      'locked' | 'active';
+  icon:        string;
+  link?:       string;
+  createdAt:   number;
+}
 
 export default function EconomyModule() {
-  const [pools,      setPools]      = useState(INITIAL_POOLS);
-  const [totalSupply] = useState(12_400_000);
-  const [saved, setSaved] = useState(false);
+  const [tasks,         setTasks]         = useState<Task[]>([]);
+  const [stakingWallet, setStakingWallet] = useState('');
+  const [savedWallet,   setSavedWallet]   = useState('');
+  const [totalUsers,    setTotalUsers]    = useState(0);
+  const [totalStaked,   setTotalStaked]   = useState(0);
+  const [saved,         setSaved]         = useState(false);
+  const [newTask,       setNewTask]       = useState({ title:'', description:'', reward:0, icon:'🎯', link:'' });
 
-  const totalStaked = pools.days7.totalStaked + pools.days30.totalStaked + pools.days90.totalStaked;
+  // Load config
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'config', 'economy'), snap => {
+      if (snap.exists()) {
+        setStakingWallet(snap.data().stakingWallet ?? '');
+        setSavedWallet(snap.data().stakingWallet ?? '');
+      }
+    });
+    return unsub;
+  }, []);
 
-  const updateAPY = (key: keyof typeof pools, value: number) => {
-    setPools(prev => ({ ...prev, [key]: { ...prev[key], apy: value } }));
-  };
+  // Live tasks
+  useEffect(() => {
+    const q = query(collection(db, 'tasks'), orderBy('createdAt', 'asc'));
+    const unsub = onSnapshot(q, snap => {
+      setTasks(snap.docs.map(d => ({ id: d.id, ...d.data() } as Task)));
+    });
+    return unsub;
+  }, []);
 
-  const save = async () => {
+  // Stats
+  useEffect(() => {
+    getDocs(collection(db, 'users')).then(snap => {
+      setTotalUsers(snap.size);
+      let staked = 0;
+      snap.docs.forEach(d => { staked += d.data().totalStaked ?? 0; });
+      setTotalStaked(staked);
+    });
+  }, []);
+
+  const saveWallet = async () => {
+    await setDoc(doc(db, 'config', 'economy'), { stakingWallet, updatedAt: serverTimestamp() }, { merge: true });
+    setSavedWallet(stakingWallet);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const addTask = async () => {
+    if (!newTask.title || !newTask.reward) return;
+    await addDoc(collection(db, 'tasks'), {
+      ...newTask,
+      reward:    Number(newTask.reward),
+      status:    'locked',
+      createdAt: Date.now(),
+      serverTimestamp: serverTimestamp(),
+    });
+    setNewTask({ title:'', description:'', reward:0, icon:'🎯', link:'' });
+  };
+
+  const toggleTask = async (task: Task) => {
+    await updateDoc(doc(db, 'tasks', task.id), {
+      status: task.status === 'locked' ? 'active' : 'locked',
+    });
+  };
+
+  const deleteTask = async (id: string) => {
+    await updateDoc(doc(db, 'tasks', id), { status: 'locked' });
+  };
+
   return (
-    <div className="p-5 space-y-5">
-      {/* Supply Overview */}
-      <div>
-        <h3 className="chrome-text text-sm font-black uppercase tracking-widest mb-3">
-          Economy Overview
-        </h3>
-        <div className="grid grid-cols-2 gap-2">
+    <div style={{padding:16,overflowY:'auto'}}>
+
+      {/* Stats */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:20}}>
+        {[
+          { label:'Total Users',  value: totalUsers.toLocaleString(),  color:'#4FC3F7' },
+          { label:'Total Staked', value: totalStaked.toLocaleString() + ' BB', color:'#D4AF37' },
+        ].map(s => (
+          <div key={s.label} style={{background:'linear-gradient(145deg,#141416,#0F0F11)',
+            border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:'12px 14px'}}>
+            <p style={{color:'#5A6A79',fontSize:10,textTransform:'uppercase',letterSpacing:'0.08em',margin:'0 0 4px'}}>{s.label}</p>
+            <p style={{color:s.color,fontSize:20,fontWeight:900,margin:0}}>{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* TON Staking Wallet */}
+      <div style={{background:'linear-gradient(145deg,#141416,#0F0F11)',
+        border:'1px solid rgba(79,195,247,0.2)',borderRadius:12,padding:16,marginBottom:20}}>
+        <p style={{color:'#4FC3F7',fontSize:11,fontWeight:700,textTransform:'uppercase',
+          letterSpacing:'0.08em',margin:'0 0 10px'}}>⚡ TON Staking Receive Wallet</p>
+        <p style={{color:'#5A6A79',fontSize:10,margin:'0 0 8px'}}>
+          Users will send TON to this address when staking
+        </p>
+        <input value={stakingWallet} onChange={e => setStakingWallet(e.target.value)}
+          placeholder="EQ... or UQ... TON wallet address"
+          style={{width:'100%',background:'#0A0A0D',border:'1px solid #2A2A2D',
+            borderRadius:8,padding:'10px 12px',color:'#E8E8E8',fontSize:12,
+            outline:'none',boxSizing:'border-box',fontFamily:'monospace',
+            WebkitUserSelect:'auto',touchAction:'auto'}}/>
+        <button onClick={saveWallet} style={{
+          marginTop:8,width:'100%',padding:'10px',borderRadius:8,fontWeight:700,fontSize:12,
+          background:'linear-gradient(180deg,#D0D0D0,#9A9A9A)',
+          border:'1px solid rgba(200,200,200,0.3)',color:'#111',cursor:'pointer'}}>
+          {saved ? '✓ Saved' : 'Save Wallet Address'}
+        </button>
+        {savedWallet && (
+          <p style={{color:'#3A3A45',fontSize:9,margin:'6px 0 0',wordBreak:'break-all',fontFamily:'monospace'}}>
+            Current: {savedWallet}
+          </p>
+        )}
+      </div>
+
+      {/* Task Manager */}
+      <p style={{color:'#5A6A79',fontSize:11,fontWeight:700,textTransform:'uppercase',
+        letterSpacing:'0.08em',margin:'0 0 10px'}}>Task Manager</p>
+
+      {/* New task form */}
+      <div style={{background:'linear-gradient(145deg,#141416,#0F0F11)',
+        border:'1px solid rgba(212,175,55,0.2)',borderRadius:12,padding:14,marginBottom:14}}>
+        <p style={{color:'#D4AF37',fontSize:11,fontWeight:700,margin:'0 0 10px'}}>+ New Task</p>
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
           {[
-            { label: 'Total Supply',     value: totalSupply.toLocaleString(),    accent: '#E8E8E8' },
-            { label: 'Total Staked',     value: totalStaked.toLocaleString(),    accent: '#D4AF37' },
-            { label: 'Staked Ratio',     value: `${((totalStaked / totalSupply) * 100).toFixed(1)}%`, accent: '#4FC3F7' },
-            { label: 'Total Stakers',    value: (pools.days7.activeStakers + pools.days30.activeStakers + pools.days90.activeStakers).toLocaleString(), accent: '#A5D6A7' },
-          ].map(m => (
-            <div key={m.label} className="admin-metric-card">
-              <p className="text-steel-400 text-[10px] uppercase tracking-widest mb-1">{m.label}</p>
-              <p className="font-black text-xl" style={{ color: m.accent }}>{m.value}</p>
-            </div>
+            { key:'title',       placeholder:'Task title',       label:'Title' },
+            { key:'description', placeholder:'What to do',       label:'Description' },
+            { key:'link',        placeholder:'https://... (optional)', label:'Link' },
+          ].map(f => (
+            <input key={f.key} value={(newTask as Record<string,string|number>)[f.key] as string}
+              onChange={e => setNewTask(p => ({ ...p, [f.key]: e.target.value }))}
+              placeholder={f.placeholder}
+              style={{background:'#0A0A0D',border:'1px solid #2A2A2D',borderRadius:8,
+                padding:'8px 12px',color:'#E8E8E8',fontSize:12,outline:'none',
+                WebkitUserSelect:'auto',touchAction:'auto'}}/>
           ))}
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+            <input type="number" value={newTask.reward || ''} onChange={e => setNewTask(p => ({ ...p, reward: Number(e.target.value) }))}
+              placeholder="Reward (BB)"
+              style={{background:'#0A0A0D',border:'1px solid #2A2A2D',borderRadius:8,
+                padding:'8px 12px',color:'#E8E8E8',fontSize:12,outline:'none',
+                WebkitUserSelect:'auto',touchAction:'auto'}}/>
+            <input value={newTask.icon} onChange={e => setNewTask(p => ({ ...p, icon: e.target.value }))}
+              placeholder="Icon emoji"
+              style={{background:'#0A0A0D',border:'1px solid #2A2A2D',borderRadius:8,
+                padding:'8px 12px',color:'#E8E8E8',fontSize:16,outline:'none',textAlign:'center',
+                WebkitUserSelect:'auto',touchAction:'auto'}}/>
+          </div>
+          <button onClick={addTask} disabled={!newTask.title || !newTask.reward}
+            style={{padding:'10px',borderRadius:8,fontWeight:700,fontSize:12,cursor:'pointer',
+              background: newTask.title && newTask.reward ? 'linear-gradient(180deg,#D0D0D0,#9A9A9A)' : '#2A2A2D',
+              border:'none',color: newTask.title && newTask.reward ? '#111' : '#5A6A79'}}>
+            Add Task (Locked)
+          </button>
         </div>
       </div>
 
-      {/* Staking Pools */}
-      <div>
-        <h3 className="chrome-text text-sm font-black uppercase tracking-widest mb-3">
-          Staking Pool APY Control
-        </h3>
-        <div className="chrome-surface rounded-xl overflow-hidden">
-          {([
-            { key: 'days7'  as const, label: '7-Day Pool',  badge: '#CD7F32' },
-            { key: 'days30' as const, label: '30-Day Pool', badge: '#C0C0C0' },
-            { key: 'days90' as const, label: '90-Day Pool', badge: '#D4AF37' },
-          ]).map(pool => (
-            <div key={pool.key} className="px-4 py-3 border-b border-obsidian-700 last:border-0">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <span className="text-sm font-bold" style={{ color: pool.badge }}>{pool.label}</span>
-                  <p className="text-steel-400 text-[10px]">
-                    {pools[pool.key].totalStaked.toLocaleString()} BB · {pools[pool.key].activeStakers} stakers
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-steel-400 text-xs">APY</span>
-                  <input
-                    type="number"
-                    value={pools[pool.key].apy}
-                    onChange={e => updateAPY(pool.key, Number(e.target.value))}
-                    className="w-16 bg-obsidian-900 border border-obsidian-600 rounded-lg px-2 py-1 text-chrome-200 text-sm text-right outline-none"
-                    style={{ touchAction: 'auto', userSelect: 'auto' }}
-                  />
-                  <span className="text-steel-400 text-xs">%</span>
-                </div>
+      {/* Existing tasks */}
+      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+        {tasks.length === 0 && (
+          <p style={{color:'#3A3A45',fontSize:12,textAlign:'center',padding:'20px 0'}}>No tasks yet</p>
+        )}
+        {tasks.map(task => (
+          <div key={task.id} style={{background:'linear-gradient(145deg,#141416,#0F0F11)',
+            border:`1px solid ${task.status === 'active' ? 'rgba(165,214,167,0.3)' : 'rgba(255,255,255,0.06)'}`,
+            borderRadius:10,padding:'12px 14px'}}>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <span style={{fontSize:20}}>{task.icon}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <p style={{color:'#D0D0D0',fontSize:12,fontWeight:700,margin:'0 0 2px',truncate:true}}>{task.title}</p>
+                <p style={{color:'#5A6A79',fontSize:10,margin:0}}>{task.description}</p>
               </div>
-              {/* Mini bar */}
-              <div className="h-1 rounded-full bg-obsidian-700 overflow-hidden">
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width:      `${(pools[pool.key].totalStaked / 1_120_000) * 100}%`,
-                    background: pool.badge,
-                    opacity:    0.7,
-                  }}
-                />
+              <div style={{textAlign:'right',flexShrink:0}}>
+                <p style={{color:'#FFD700',fontSize:13,fontWeight:900,margin:'0 0 4px'}}>+{task.reward} BB</p>
+                <div style={{display:'flex',gap:4}}>
+                  <button onClick={() => toggleTask(task)}
+                    style={{padding:'3px 8px',borderRadius:6,fontSize:10,fontWeight:700,cursor:'pointer',border:'none',
+                      background: task.status === 'active' ? 'rgba(239,83,80,0.2)' : 'rgba(165,214,167,0.2)',
+                      color: task.status === 'active' ? '#EF5350' : '#A5D6A7'}}>
+                    {task.status === 'active' ? 'Lock' : 'Unlock'}
+                  </button>
+                </div>
               </div>
             </div>
-          ))}
-        </div>
-        <button
-          onClick={save}
-          className="mt-3 chrome-button w-full py-2.5 rounded-xl font-bold text-obsidian-900 text-sm"
-        >
-          {saved ? '✓ APY Rates Saved' : 'Update APY Rates'}
-        </button>
+          </div>
+        ))}
       </div>
     </div>
   );
