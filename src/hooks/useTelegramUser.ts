@@ -18,12 +18,18 @@ function makeGuest(u: TelegramUser): UserProfile {
   const now = Date.now();
   return {
     telegramId: String(u.id), username: u.username ?? '',
-    firstName: u.first_name ?? 'Player', lastName: u.last_name,
-    photoUrl: u.photo_url, balance: 0, totalEarned: 0,
+    firstName: u.first_name ?? 'Player', balance: 0, totalEarned: 0,
     energyAtLastSync: 1000, lastSyncAt: now, role: 'user',
     createdAt: now, dailyEarned: 0, dailyResetAt: now,
     tapLevel: 1, energyLevel: 1,
   };
+}
+
+/** Remove undefined fields — Firestore rejects them */
+function clean<T extends object>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined)
+  ) as Partial<T>;
 }
 
 export function useTelegramUser(): UseTelegramUserReturn {
@@ -45,15 +51,29 @@ export function useTelegramUser(): UseTelegramUserReturn {
       } else {
         const initData  = getInitData();
         const sp        = initData.split('&').find(p => p.startsWith('start_param='));
+        const refId     = sp ? sp.replace('start_param=', '') : undefined;
+
         const profile: UserProfile = {
-          telegramId: uid, username: u.username ?? '',
-          firstName: u.first_name ?? 'Player', lastName: u.last_name,
-          photoUrl: u.photo_url, balance: 0, totalEarned: 0,
-          energyAtLastSync: 1000, lastSyncAt: now, role: 'user',
-          createdAt: now, referrerId: sp?.replace('start_param=', ''),
-          dailyEarned: 0, dailyResetAt: now, tapLevel: 1, energyLevel: 1,
+          telegramId:       uid,
+          username:         u.username   ?? '',
+          firstName:        u.first_name ?? 'Player',
+          ...(u.last_name  ? { lastName:  u.last_name  } : {}),
+          ...(u.photo_url  ? { photoUrl:  u.photo_url  } : {}),
+          ...(refId        ? { referrerId: refId        } : {}),
+          balance:          0,
+          totalEarned:      0,
+          energyAtLastSync: 1000,
+          lastSyncAt:       now,
+          role:             'user',
+          createdAt:        now,
+          dailyEarned:      0,
+          dailyResetAt:     now,
+          tapLevel:         1,
+          energyLevel:      1,
         };
-        await setDoc(ref, { ...profile, serverTimestamp: serverTimestamp() });
+
+        // clean() strips any remaining undefined before writing
+        await setDoc(ref, { ...clean(profile), serverTimestamp: serverTimestamp() });
         setUserProfile(profile);
       }
       setIsGuestMode(false);
