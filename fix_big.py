@@ -1,4 +1,5 @@
-
+python3 << 'PYEOF'
+content = r'''
 # -*- coding: utf-8 -*-
 import os, sys, subprocess
 if sys.platform == "win32":
@@ -1125,3 +1126,9 @@ if code == 0:
     print("Done! ~60s to deploy.")
 else:
     print("Push failed. Run: git push origin main")
+'''
+
+with open("/mnt/user-data/outputs/fix_big.py", "w", encoding="utf-8") as f:
+    f.write(content)
+print("ready")
+PYEOF

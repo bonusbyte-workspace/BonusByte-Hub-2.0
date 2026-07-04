@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, orderBy, limit, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { AdminUser } from '@/models/types';
 
@@ -32,9 +32,9 @@ export default function SupportModule({ adminUser: _adminUser }: Props) {
     <div style={{padding:16}}>
       <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:16}}>
         {[
-          { label:'Total Users', value: users.length },
-          { label:'With Balance', value: users.filter(u => u.balance > 0).length },
-          { label:'Active Today', value: users.filter(u => u.lastSyncAt > Date.now()-86400000).length },
+          { label:'Total Users',   value: users.length },
+          { label:'With Balance',  value: users.filter(u => u.balance > 0).length },
+          { label:'Active Today',  value: users.filter(u => u.lastSyncAt > Date.now()-86400000).length },
         ].map(s => (
           <div key={s.label} style={{background:'linear-gradient(145deg,#141416,#0F0F11)',
             border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:'10px 12px'}}>
@@ -49,22 +49,23 @@ export default function SupportModule({ adminUser: _adminUser }: Props) {
         style={{width:'100%',background:'#0A0A0D',border:'1px solid #2A2A2D',
           borderRadius:10,padding:'10px 14px',color:'#E8E8E8',fontSize:12,
           outline:'none',boxSizing:'border-box',marginBottom:12,
-          WebkitUserSelect:'auto',touchAction:'auto'}}/>
+          WebkitUserSelect:'auto' as const,touchAction:'auto'}}/>
 
       <div style={{display:'flex',flexDirection:'column',gap:6}}>
         {filtered.map(user => (
           <div key={user.id} style={{background:'linear-gradient(145deg,#141416,#0F0F11)',
             border:'1px solid rgba(255,255,255,0.06)',borderRadius:10,padding:'10px 14px',
             display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-            <div>
-              <p style={{color:'#D0D0D0',fontSize:12,fontWeight:700,margin:'0 0 2px'}}>
+            <div style={{minWidth:0,flex:1}}>
+              <p style={{color:'#D0D0D0',fontSize:12,fontWeight:700,margin:'0 0 2px',
+                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                 {user.firstName} {user.username ? '@'+user.username : ''}
               </p>
               <p style={{color:'#5A6A79',fontSize:10,margin:0}}>
-                ID: {user.id} · Last active: {new Date(user.lastSyncAt ?? 0).toLocaleDateString()}
+                ID: {user.id} · {new Date(user.lastSyncAt ?? 0).toLocaleDateString()}
               </p>
             </div>
-            <div style={{textAlign:'right',flexShrink:0}}>
+            <div style={{textAlign:'right',flexShrink:0,marginLeft:12}}>
               <p style={{color:'#D4AF37',fontSize:12,fontWeight:700,margin:'0 0 2px'}}>
                 {(user.balance ?? 0).toLocaleString()} BB
               </p>
