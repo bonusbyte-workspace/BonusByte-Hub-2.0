@@ -1119,7 +1119,7 @@ export default function App() {
 # ── Push
 print("\\nPushing all fixes...")
 run("git add -A")
-run(\'git commit -m "feat: RBAC admin real data, task system wallet page, TON staking wallet"\')
+run('git commit -m "feat: RBAC admin real data, task system wallet page, TON staking wallet"')
 code = run("git push origin main")
 if code == 0:
     print("Done! ~60s to deploy.")
