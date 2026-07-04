@@ -1,31 +1,26 @@
 import { useState } from 'react';
 import { useTelegramUser } from '@/hooks/useTelegramUser';
+import PageLayout from '@/components/PageLayout';
 import StakingPageComponent from '@/components/Staking/StakingPage';
-import Navigation from '@/components/Navigation/Navigation';
 
-export default function StakingPage() {
+export default function StakingRoute() {
   const { userProfile, isLoading } = useTelegramUser();
-  const [balance, setBalance] = useState(userProfile?.balance ?? 0);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-2 border-chrome-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
+  const [balance, setBalance] = useState<number | null>(null);
   return (
-    <div
-      className="flex flex-col h-full"
-      style={{ background: 'radial-gradient(ellipse 80% 40% at 50% 0%, #0D1A2E 0%, #000000 100%)' }}
-    >
-      <StakingPageComponent
-        telegramId={userProfile?.telegramId ?? ''}
-        balance={balance}
-        onStaked={setBalance}
-      />
-      <Navigation />
-    </div>
+    <PageLayout title="Pre-Launch Staking" subtitle="Lock coins before TGE to earn yields" showWallet>
+      {isLoading ? (
+        <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:200}}>
+          <div style={{width:28,height:28,border:'2px solid #9A9A9A',borderTopColor:'transparent',
+            borderRadius:'50%',animation:'bb-spin 0.8s linear infinite'}}/>
+          <style>{'@keyframes bb-spin{to{transform:rotate(360deg)}}'}</style>
+        </div>
+      ) : (
+        <StakingPageComponent
+          telegramId={userProfile?.telegramId ?? ''}
+          balance={balance ?? userProfile?.balance ?? 0}
+          onStaked={setBalance}
+        />
+      )}
+    </PageLayout>
   );
 }

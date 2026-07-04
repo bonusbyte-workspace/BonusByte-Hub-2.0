@@ -8,7 +8,7 @@ import StakingRoute  from '@/pages/Staking';
 import AdminPage     from '@/pages/admin/AdminPage';
 import WalletPage    from '@/pages/WalletPage';
 import Leaderboard   from '@/components/Leaderboard/Leaderboard';
-import Navigation    from '@/components/Navigation/Navigation';
+import PageLayout    from '@/components/PageLayout';
 import { initTelegram } from '@/lib/telegram';
 
 const ADMIN_ROUTE  = import.meta.env.VITE_ADMIN_ROUTE || '/bb-nexus-7k';
@@ -17,7 +17,6 @@ const TON_MANIFEST = window.location.origin + '/tonconnect-manifest.json';
 export default function App() {
   const [splashDone, setSplashDone] = useState(false);
   useEffect(() => { initTelegram(); }, []);
-
   return (
     <ErrorBoundary>
       <TonConnectUIProvider manifestUrl={TON_MANIFEST}>
@@ -30,10 +29,9 @@ export default function App() {
                 <Routes>
                   <Route path="/"            element={<Home/>}/>
                   <Route path="/leaderboard" element={
-                    <div style={{display:'flex',flexDirection:'column',height:'100%',
-                      background:'radial-gradient(ellipse 80% 40% at 50% 0%,#0D1A2E 0%,#000 100%)'}}>
-                      <Leaderboard/><Navigation/>
-                    </div>
+                    <PageLayout title="Leaderboard" subtitle="Global BB coin rankings">
+                      <Leaderboard/>
+                    </PageLayout>
                   }/>
                   <Route path="/staking"     element={<StakingRoute/>}/>
                   <Route path="/wallet"      element={<WalletPage/>}/>
