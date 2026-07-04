@@ -15,7 +15,7 @@ export default function WalletPage() {
     if (task.status === 'locked' || completed.has(task.id) || claiming) return;
     if (task.link) window.open(task.link, '_blank');
     setClaiming(task.id);
-    const ok = await completeTask(task, userProfile?.balance ?? 0);
+    const ok = await completeTask(task);
     if (ok) setClaimed(prev => new Set([...prev, task.id]));
     setClaiming(null);
   };

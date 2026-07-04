@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTonConnectUI, useTonAddress } from '@tonconnect/ui-react';
+import { useTonConnectUI, useTonAddress, TonConnectButton } from '@tonconnect/ui-react';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { STAKE_PERIODS } from '@/models/types';
