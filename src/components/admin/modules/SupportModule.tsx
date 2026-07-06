@@ -80,7 +80,7 @@ export default function SupportModule({ adminUser: _a }: Props) {
           </p>
           <p style={{color:'#9A9A9A',fontSize:10,margin:0,wordBreak:'break-all',fontFamily:'monospace',
             background:'#0A0A0D',padding:'8px 10px',borderRadius:6}}>
-            https://api.telegram.org/bot8707895102:AAF_K22dEYEuUh4sQT6ww8xGXTFaR6ve0iU/setWebhook?url=https://bonus-byte-hub-2-0.vercel.app/api/webhook
+            https://api.telegram.org/bot8707895102:AAHCscPgIW3_IwYQjMV8CSDzoxkhJtqd0C4/setWebhook?url=https://bonus-byte-hub-2-0.vercel.app/api/webhook
           </p>
           <p style={{color:'#3A3A45',fontSize:10,margin:'8px 0 0'}}>
             After setting, users who message @BonusByte_Bot will appear here.
