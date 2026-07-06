@@ -54,9 +54,6 @@ export default function DeveloperModule() {
   const toggleTask = async (task: Task) => {
     await updateDoc(doc(db,'tasks',task.id), { status: task.status==='locked'?'active':'locked' });
   };
-  const deleteTask = async (id: string) => {
-    await updateDoc(doc(db,'tasks',id), { status:'locked' });
-  };
 
   const TABS = [
     { id:'metrics' as const, label:'Metrics' },
