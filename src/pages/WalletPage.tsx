@@ -3,6 +3,7 @@ import { TonConnectButton, useTonAddress } from '@tonconnect/ui-react';
 import { useTelegramUser } from '@/hooks/useTelegramUser';
 import { useTasks } from '@/hooks/useTasks';
 import { useReferrals, REFERRAL_REWARD } from '@/hooks/useReferrals';
+import type { Referral } from '@/hooks/useReferrals';
 import PageLayout from '@/components/PageLayout';
 
 export default function WalletPage() {

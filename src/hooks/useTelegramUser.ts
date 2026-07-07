@@ -3,7 +3,7 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getTelegramUser, getInitData } from '@/lib/telegram';
 import type { TelegramUser, UserProfile } from '@/models/types';
-import { REFERRAL_REWARD } from '@/hooks/useReferrals';
+const REFERRAL_REWARD = 500; // BB coins per referral
 
 interface UseTelegramUserReturn {
   telegramUser: TelegramUser | null;
