@@ -3,6 +3,7 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getTelegramUser, getInitData } from '@/lib/telegram';
 import type { TelegramUser, UserProfile } from '@/models/types';
+import { REFERRAL_REWARD } from '@/hooks/useReferrals';
 
 interface UseTelegramUserReturn {
   telegramUser: TelegramUser | null;
@@ -12,6 +13,10 @@ interface UseTelegramUserReturn {
   isGuestMode:  boolean;
   guestReason:  string | null;
   refetch:      () => Promise<void>;
+}
+
+function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
 }
 
 function makeGuest(u: TelegramUser): UserProfile {
@@ -25,9 +30,34 @@ function makeGuest(u: TelegramUser): UserProfile {
   };
 }
 
-// Firestore does NOT accept undefined — strip all undefined fields
-function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
+async function rewardReferrer(referrerId: string, newUserId: string, newUser: TelegramUser) {
+  if (!referrerId || referrerId === newUserId) return;
+  try {
+    const referrerRef  = doc(db, 'users', referrerId);
+    const referrerSnap = await getDoc(referrerRef);
+    if (!referrerSnap.exists()) return;
+
+    const d = referrerSnap.data();
+    // Reward referrer
+    await setDoc(referrerRef, {
+      balance:          (d.balance          ?? 0) + REFERRAL_REWARD,
+      totalEarned:      (d.totalEarned      ?? 0) + REFERRAL_REWARD,
+      referralCount:    (d.referralCount    ?? 0) + 1,
+      referralEarnings: (d.referralEarnings ?? 0) + REFERRAL_REWARD,
+    }, { merge: true });
+
+    // Log referral record under referrer
+    await setDoc(doc(db, 'users', referrerId, 'referrals', newUserId), {
+      telegramId: newUserId,
+      username:   newUser.username   ?? '',
+      firstName:  newUser.first_name ?? 'Player',
+      joinedAt:   Date.now(),
+      reward:     REFERRAL_REWARD,
+      status:     'rewarded',
+    });
+  } catch (err) {
+    console.warn('[BB] Referral reward failed:', err);
+  }
 }
 
 export function useTelegramUser(): UseTelegramUserReturn {
@@ -44,9 +74,11 @@ export function useTelegramUser(): UseTelegramUserReturn {
     try {
       const snap = await getDoc(ref);
       const now  = Date.now();
+
       if (snap.exists()) {
         setUserProfile(snap.data() as UserProfile);
       } else {
+        // Parse referrer from start_param
         const initData = getInitData();
         const sp       = initData.split('&').find(p => p.startsWith('start_param='));
         const refId    = sp ? sp.replace('start_param=', '') : undefined;
@@ -68,12 +100,17 @@ export function useTelegramUser(): UseTelegramUserReturn {
           dailyResetAt:     now,
           tapLevel:         1,
           energyLevel:      1,
+          referralCount:    0,
+          referralEarnings: 0,
           serverTimestamp:  serverTimestamp(),
         };
 
         const safe = stripUndefined(raw as Record<string, unknown>);
         await setDoc(ref, safe);
         setUserProfile(safe as unknown as UserProfile);
+
+        // Reward referrer after profile created
+        if (refId) await rewardReferrer(refId, uid, u);
       }
       setIsGuestMode(false);
       setGuestReason(null);
