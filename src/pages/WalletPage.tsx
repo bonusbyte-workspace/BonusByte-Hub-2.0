@@ -14,8 +14,6 @@ export default function WalletPage() {
 
   const [claiming, setClaiming] = useState<string | null>(null);
   const [claimed,  setClaimed]  = useState<Set<string>>(new Set());
-  const [section,  setSection]  = useState<'tasks'|'referrals'>('tasks');
-
   const handleTask = async (task: typeof tasks[0]) => {
     if (task.status === 'locked' || completed.has(task.id) || claimed.has(task.id) || claiming) return;
     if (task.link) window.open(task.link, '_blank');
@@ -115,7 +113,7 @@ export default function WalletPage() {
                 Your Referrals
               </p>
               <div style={{display:'flex',flexDirection:'column',gap:6}}>
-                {referrals.slice(0,5).map(r => (
+                {referrals.slice(0,5).map((r: Referral) => (
                   <div key={r.telegramId} style={{display:'flex',alignItems:'center',
                     justifyContent:'space-between',padding:'8px 10px',
                     background:'rgba(0,0,0,0.3)',borderRadius:8}}>
