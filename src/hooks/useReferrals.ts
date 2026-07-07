@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export interface Referral {
@@ -49,7 +49,6 @@ export function useReferrals(telegramId: string): UseReferralsReturn {
     if (!referralLink) return;
     navigator.clipboard?.writeText(referralLink).catch(() => {});
     // Telegram share fallback
-    const shareText = `Join BonusByte and earn BB coins! Tap to earn, stake TON, and win rewards. ${referralLink}`;
     if (window.Telegram?.WebApp) {
       window.open(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent('Join BonusByte and start earning BB coins!')}`, '_blank');
     }
