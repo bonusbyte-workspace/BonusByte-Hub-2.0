@@ -34,8 +34,8 @@ export default function Home() {
   useEffect(() => {
     if (userProfile) {
       setOwnedMap({
-        hasAutoTap:   Boolean((userProfile as Record<string,unknown>).hasAutoTap),
-        hasDoubleTap: Boolean((userProfile as Record<string,unknown>).hasDoubleTap),
+        hasAutoTap:   Boolean((userProfile as unknown as Record<string,unknown>).hasAutoTap),
+        hasDoubleTap: Boolean((userProfile as unknown as Record<string,unknown>).hasDoubleTap),
       });
     }
   }, [userProfile]);
@@ -51,7 +51,7 @@ export default function Home() {
     telegramId:       userProfile?.telegramId ?? 'guest',
     initialBalance:   userProfile?.balance    ?? 0,
     initialEnergy:    userProfile?.energyAtLastSync ?? DEFAULT_CONFIG.maxEnergy,
-    initialTotalTaps: Number((userProfile as Record<string,unknown>|null)?.totalTaps ?? 0),
+    initialTotalTaps: Number((userProfile as unknown as Record<string,unknown>|null)?.totalTaps ?? 0),
     hasAutoTap:       ownedMap.hasAutoTap,
     hasDoubleTap:     ownedMap.hasDoubleTap,
     config:           DEFAULT_CONFIG,
@@ -73,8 +73,7 @@ export default function Home() {
     } catch { /* silent */ } finally { setBuying(null); }
   };
 
-  const tierEnd   = LEVEL_THRESHOLDS[level] ?? 200_000;
-  const tierStart = LEVEL_THRESHOLDS[level - 1] ?? 0;
+  const tierEnd    = LEVEL_THRESHOLDS[level] ?? 200_000;
   const tapsToNext = level < 3 ? Math.max(0, tierEnd - totalTaps) : 0;
 
   if (isLoading) return (
