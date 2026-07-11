@@ -126,7 +126,7 @@ export default function Home() {
       {/* Top bar */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
         paddingTop:'max(56px,calc(env(safe-area-inset-top,0px) + 56px))',
-        paddingLeft:20,paddingRight:20,paddingBottom:8,position:'relative',zIndex:10,flexShrink:0}>
+        paddingLeft:20,paddingRight:20,paddingBottom:8,position:'relative',zIndex:10,flexShrink:0}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <img src="/logo.png" alt="" style={{width:28,height:28,objectFit:'contain'}}/>
           <div>
