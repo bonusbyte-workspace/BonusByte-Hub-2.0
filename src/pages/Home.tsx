@@ -125,8 +125,8 @@ export default function Home() {
 
       {/* Top bar */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
-        paddingTop:'max(48px,calc(env(safe-area-inset-top,0px)+48px))',
-        paddingLeft:20,paddingRight:20,paddingBottom:8,position:'relative',zIndex:10}}>
+        paddingTop:'max(56px,calc(env(safe-area-inset-top,0px) + 56px))',
+        paddingLeft:20,paddingRight:20,paddingBottom:8,position:'relative',zIndex:10,flexShrink:0}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <img src="/logo.png" alt="" style={{width:28,height:28,objectFit:'contain'}}/>
           <div>
@@ -165,7 +165,7 @@ export default function Home() {
 
       {/* Level progress bar */}
       {level < 3 && (
-        <div style={{paddingLeft:20,paddingRight:20,paddingBottom:4,zIndex:10}}>
+        <div style={{paddingLeft:20,paddingRight:20,paddingBottom:6,zIndex:10}}>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
             <span style={{color:'#3A3A45',fontSize:9}}>{totalTaps.toLocaleString()} taps</span>
             <span style={{color:'#3A3A45',fontSize:9}}>
