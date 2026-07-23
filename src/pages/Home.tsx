@@ -49,7 +49,8 @@ export default function Home() {
 
   const { balance, energy, tapCount, totalTaps, level, levelProgress, handleTap, isSyncing } = useTapEngine({
     telegramId:       userProfile?.telegramId ?? 'guest',
-    initialBalance:   userProfile?.balance    ?? 0,
+    initialBalance:   userProfile?.balance       ?? 0,
+    initialEarned:    userProfile?.totalEarned    ?? 0,
     initialEnergy:    userProfile?.energyAtLastSync ?? DEFAULT_CONFIG.maxEnergy,
     initialTotalTaps: Number((userProfile as unknown as Record<string,unknown>|null)?.totalTaps ?? 0),
     hasAutoTap:       ownedMap.hasAutoTap,
